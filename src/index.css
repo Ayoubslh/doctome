@@ -1,67 +1,86 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-:root {
-  --bg-main: #ffffff;
-  --bg-sidebar: #ffffff;
-  --bg-card: #ffffff;
-  --border-light: #e2e8f0;
-  --border-subtle: #f1f5f9;
-  
-  --text-main: #334155;
-  --text-dark: #0f172a;
-  --text-muted: #64748b;
-  
-  --primary: #0ea5e9;
-  --primary-light: #e0f2fe;
-  
-  --success: #10b981;
-  --success-bg: #d1fae5;
-  --success-text: #065f46;
-  
-  --warning: #f59e0b;
-  --warning-bg: #fef3c7;
-  --warning-text: #92400e;
-  
-  --danger: #ef4444;
-  --danger-bg: #fee2e2;
-  --danger-text: #991b1b;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-full: 9999px;
+@layer base {
+  :root {
+    --color-primary: 14 165 233;
+    --color-primary-light: 224 242 254;
+
+    --color-success: 16 185 129;
+    --color-success-bg: 209 250 229;
+    --color-success-text: 6 95 70;
+
+    --color-warning: 245 158 11;
+    --color-warning-bg: 254 243 199;
+    --color-warning-text: 146 64 14;
+
+    --color-danger: 239 68 68;
+    --color-danger-bg: 254 226 226;
+    --color-danger-text: 153 27 27;
+
+    --color-text-main: 51 65 85;
+    --color-text-dark: 15 23 42;
+    --color-text-muted: 100 116 139;
+
+    --color-border-light: 226 232 240;
+    --color-border-subtle: 241 245 249;
+
+    --color-bg-main: 255 255 255;
+    --color-bg-sidebar: 255 255 255;
+    --color-bg-card: 255 255 255;
+  }
+
+  .dark {
+    --color-primary: 14 165 233;
+    --color-primary-light: 3 105 161;
+
+    --color-success: 16 185 129;
+    --color-success-bg: 6 78 59;
+    --color-success-text: 167 243 208;
+
+    --color-warning: 245 158 11;
+    --color-warning-bg: 120 53 15;
+    --color-warning-text: 253 230 138;
+
+    --color-danger: 239 68 68;
+    --color-danger-bg: 127 29 29;
+    --color-danger-text: 254 202 202;
+
+    --color-text-main: 203 213 225;
+    --color-text-dark: 248 250 252;
+    --color-text-muted: 148 163 184;
+
+    --color-border-light: 51 65 85;
+    --color-border-subtle: 30 41 59;
+
+    --color-bg-main: 15 23 42;
+    --color-bg-sidebar: 30 41 59;
+    --color-bg-card: 30 41 59;
+  }
+
+  body {
+    @apply font-sans bg-bg-main text-text-main antialiased;
+  }
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--bg-main);
-  color: var(--text-main);
-  line-height: 1.5;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  color: var(--text-dark);
-  font-weight: 600;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 3px;
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
-
-ul {
-  list-style: none;
-}
-
