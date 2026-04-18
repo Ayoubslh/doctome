@@ -31,16 +31,7 @@ const Patients = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   React.useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
-    if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-8 w-1/4 rounded-lg" />
-        <Skeleton className="h-[500px] w-full rounded-2xl" />
-      </div>
-    );
-  }
-
-  return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, []);
 
   const { t } = useLanguage();
@@ -113,6 +104,15 @@ const Patients = () => {
       window.history.replaceState({}, document.title);
     }
   }, [location.state, patientsList]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-1/4 rounded-lg" />
+        <Skeleton className="h-[500px] w-full rounded-2xl" />
+      </div>
+    );
+  }
 
   const filteredPatients = patientsList.filter(
     (p) =>

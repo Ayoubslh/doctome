@@ -12,21 +12,13 @@ import { useToast } from "../context/ToastContext";
 import { useLocation } from "react-router-dom";
 
 import { useTimeSaved } from "../context/TimeSavedContext";
+import axios from 'axios';
 
 const Appointments = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   React.useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
-    if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-8 w-1/4 rounded-lg" />
-        <Skeleton className="h-[500px] w-full rounded-2xl" />
-      </div>
-    );
-  }
-
-  return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, []);
 
   const { t } = useLanguage();
@@ -67,6 +59,15 @@ const Appointments = () => {
     }
   }, [location.state]);
 
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-1/4 rounded-lg" />
+        <Skeleton className="h-[500px] w-full rounded-2xl" />
+      </div>
+    );
+  }
+
   const filteredAppointments = appointmentsData.filter((app) => {
     if (activeTab === "upcoming")
       return (
@@ -78,32 +79,55 @@ const Appointments = () => {
     return true;
   });
 
-  const handleSaveAppointment = (e) => {
+  const handleSaveAppointment = async (e) => {
     e.preventDefault();
     if(!formData.patient || !formData.date || !formData.time) {
        addToast("Please fill all required fields", "warning");
        return;
     }
 
-    if (modalMode === "create") {
-      const newAppt = {
-        id: Date.now(),
-        patient: formData.patient,
-        time: formData.time,
-        date: formData.date,
-        type: formData.type,
-        status: "Pending",
-        provider: formData.provider
-      };
-      setAppointmentsData([...appointmentsData, newAppt]);
-      addTimeSaved(3); // Fast Appointment Scheduling
-      addToast("Appointment created successfully! (+3 min saved)", "success");
-    } else {
-      setAppointmentsData(appointmentsData.map(a => a.id === selectedAppointment.id ? { ...a, ...formData } : a));
-      addTimeSaved(3); // Fast modification
-      addToast(`Appointment updated for ${formData.patient}. (+3 min saved)`, "success");
+    // Prepare payload for API
+    const appointmentHour = parseInt(formData.time.split(':')[0]);
+    const payload = {
+      appointment_id: `APT-${Date.now()}`,
+      patient_id: `PT-${Date.now()}`, // Placeholder, ideally from patient selection
+      patient_name: formData.patient,
+      appointment_date: formData.date,
+      appointment_hour: appointmentHour,
+      specialty: formData.type,
+      doctor_id: formData.provider === "Dr. Sarah Jenkins" ? "DOC-001" : "DOC-002", // Map provider to ID
+    };
+
+    try {
+      const response = await axios.post('https://tarfkhobz.app.n8n.cloud/webhook/doctome-appointment', payload);
+      if (response.status === 200) {
+        // On success, update local state
+        if (modalMode === "create") {
+          const newAppt = {
+            id: Date.now(),
+            patient: formData.patient,
+            time: formData.time,
+            date: formData.date,
+            type: formData.type,
+            status: "Pending",
+            provider: formData.provider
+          };
+          setAppointmentsData([...appointmentsData, newAppt]);
+          addTimeSaved(3); // Fast Appointment Scheduling
+          addToast("Appointment created successfully! (+3 min saved)", "success");
+        } else {
+          setAppointmentsData(appointmentsData.map(a => a.id === selectedAppointment.id ? { ...a, ...formData } : a));
+          addTimeSaved(3); // Fast modification
+          addToast(`Appointment updated for ${formData.patient}. (+3 min saved)`, "success");
+        }
+        setIsModalOpen(false);
+      } else {
+        addToast("Failed to book appointment", "error");
+      }
+    } catch (error) {
+      console.error("Error booking appointment:", error);
+      addToast("Error booking appointment", "error");
     }
-    setIsModalOpen(false);
   };
 
   const openModifyModal = (appointment = null) => {

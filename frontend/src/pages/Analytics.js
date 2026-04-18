@@ -12,7 +12,14 @@ const Analytics = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   React.useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
-    if (isLoading) {
+    return () => clearTimeout(timer);
+  }, []);
+
+  const { t } = useLanguage();
+  const { addToast } = useToast();
+  const [timeFilter, setTimeFilter] = useState("This Week");
+
+  if (isLoading) {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-8 w-1/4 rounded-lg" />
@@ -21,12 +28,6 @@ const Analytics = () => {
     );
   }
 
-  return () => clearTimeout(timer);
-  }, []);
-
-  const { t } = useLanguage();
-  const { addToast } = useToast();
-  const [timeFilter, setTimeFilter] = useState("This Week");
 
 
     const chartDataWeek = [
