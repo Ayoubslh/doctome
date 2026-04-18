@@ -15,6 +15,23 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const storedToken = localStorage.getItem("auth_token");
+
+    const fetchUser = async () => {
+      try {
+        const response = await axios.get(`${api}/auth/me`);
+        if (response.data && (response.data._id || response.data.user_id)) {
+          setUser(response.data);
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user", error);
+        // Attempt token refresh or logout on 401
+        logout();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (storedToken) {
       setToken(storedToken);
       axios.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
@@ -23,22 +40,6 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(false);
     }
   }, []);
-
-  const fetchUser = async () => {
-    try {
-      const response = await axios.get(`${api}/auth/me`);
-      if (response.data && response.data.user_id) {
-        setUser(response.data);
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.error("Failed to fetch user", error);
-      // Attempt token refresh or logout on 401
-      logout();
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const login = (newToken, userData) => {
     setToken(newToken);
@@ -49,6 +50,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("auth_user", JSON.stringify(userData));
     }
     axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+  };
+
+  const updateUser = (updates) => {
+    setUser((current) => ({ ...current, ...updates }));
   };
 
   const logout = () => {
@@ -62,7 +67,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, user, token, login, logout, isLoading }}>
+      value={{ isAuthenticated, user, token, login, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

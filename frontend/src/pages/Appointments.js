@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Skeleton } from "../components/common/Skeleton";
 import { useLanguage } from "../context/LanguageContext";
-import { Calendar as CalendarIcon, Clock, Plus, Filter } from "lucide-react";
+import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import Badge from "../components/common/Badge";
-import Dropdown, { DropdownItem } from "../components/common/Dropdown";
-import Modal from "../components/common/Modal";
-import ConfirmDialog from "../components/common/ConfirmDialog";
 import { useToast } from "../context/ToastContext";
 import { useLocation } from "react-router-dom";
 
 import { useTimeSaved } from "../context/TimeSavedContext";
+import { useAuth } from "../context/AuthContext";
+import { useAppointmentStore } from "../store/appointmentStore";
 import axios from 'axios';
 
 const Appointments = () => {
@@ -22,42 +21,36 @@ const Appointments = () => {
   }, []);
 
   const { t } = useLanguage();
+  const { user } = useAuth();
   const { addTimeSaved } = useTimeSaved();
   const [activeTab, setActiveTab] = useState("upcoming");
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState("create"); // 'create' or 'modify'
-  const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    patient: "",
-    provider: "Dr. Sarah Jenkins",
-    type: "Checkup",
-    date: "",
-    time: "09:00",
-    status: "Pending",
-  });
 
   const { addToast } = useToast();
   const location = useLocation();
 
-  const [appointmentsData, setAppointmentsData] = useState([
-    { id: 1, patient: t("eleanor_pena"), time: "09:00 AM - 09:30 AM", date: t("today"), type: t("checkup"), status: t("confirmed"), provider: "Dr. Sarah Jenkins" },
-    { id: 2, patient: t("cody_fisher"), time: "09:30 AM - 10:15 AM", date: t("today"), type: t("consultation"), status: t("pending"), provider: "Dr. Sarah Jenkins" },
-    { id: 3, patient: t("leslie_alexander"), time: "10:30 AM - 11:00 AM", date: t("today"), type: t("follow_up"), status: t("confirmed"), provider: "Dr. Michael Chen" },
-    { id: 4, patient: t("ralph_edwards"), time: "11:15 AM - 12:00 PM", date: t("tomorrow"), type: t("checkup"), status: t("confirmed"), provider: "Dr. Sarah Jenkins" },
-    { id: 5, patient: t("jane_cooper"), time: "02:00 PM - 02:45 PM", date: t("tomorrow"), type: t("consultation"), status: "Cancelled", provider: "Dr. Michael Chen" },
-  ]);
+  const appointments = useAppointmentStore((state) => state.appointments);
+  const setAppointments = useAppointmentStore((state) => state.setAppointments);
 
-  React.useEffect(() => {
-    if (location.state?.newAppointment) {
-      setModalMode("create");
-      setFormData(prev => ({...prev, patient: location.state.patientName}));
-      setIsModalOpen(true);
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await axios.get(`http://localhost:3000/appointments?user_id=${user._id || user.user_id}`);
+        setAppointments(response.data || []);
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAppointments();
+  }, [user, setAppointments]);
 
   if (isLoading) {
     return (
@@ -68,7 +61,7 @@ const Appointments = () => {
     );
   }
 
-  const filteredAppointments = appointmentsData.filter((app) => {
+  const filteredAppointments = appointments.filter((app) => {
     if (activeTab === "upcoming")
       return (
         app.status !== "Cancelled" && app.status !== "cancelled" &&
@@ -78,89 +71,6 @@ const Appointments = () => {
     if (activeTab === "cancelled") return app.status === "Cancelled" || app.status === "cancelled";
     return true;
   });
-
-  const handleSaveAppointment = async (e) => {
-    e.preventDefault();
-    if(!formData.patient || !formData.date || !formData.time) {
-       addToast("Please fill all required fields", "warning");
-       return;
-    }
-
-    // Prepare payload for API
-    const appointmentHour = parseInt(formData.time.split(':')[0]);
-    const payload = {
-      appointment_id: `APT-${Date.now()}`,
-      patient_id: `PT-${Date.now()}`, // Placeholder, ideally from patient selection
-      patient_name: formData.patient,
-      appointment_date: formData.date,
-      appointment_hour: appointmentHour,
-      specialty: formData.type,
-      doctor_id: formData.provider === "Dr. Sarah Jenkins" ? "DOC-001" : "DOC-002", // Map provider to ID
-    };
-
-    try {
-      const response = await axios.post('https://tarfkhobz.app.n8n.cloud/webhook/doctome-appointment', payload);
-      if (response.status === 200) {
-        // On success, update local state
-        if (modalMode === "create") {
-          const newAppt = {
-            id: Date.now(),
-            patient: formData.patient,
-            time: formData.time,
-            date: formData.date,
-            type: formData.type,
-            status: "Pending",
-            provider: formData.provider
-          };
-          setAppointmentsData([...appointmentsData, newAppt]);
-          addTimeSaved(3); // Fast Appointment Scheduling
-          addToast("Appointment created successfully! (+3 min saved)", "success");
-        } else {
-          setAppointmentsData(appointmentsData.map(a => a.id === selectedAppointment.id ? { ...a, ...formData } : a));
-          addTimeSaved(3); // Fast modification
-          addToast(`Appointment updated for ${formData.patient}. (+3 min saved)`, "success");
-        }
-        setIsModalOpen(false);
-      } else {
-        addToast("Failed to book appointment", "error");
-      }
-    } catch (error) {
-      console.error("Error booking appointment:", error);
-      addToast("Error booking appointment", "error");
-    }
-  };
-
-  const openModifyModal = (appointment = null) => {
-    setModalMode("modify");
-    setSelectedAppointment(appointment);
-    setFormData({
-      patient: appointment.patient,
-      provider: appointment.provider,
-      type: appointment.type,
-      date: appointment.date,
-      time: appointment.time,
-      status: appointment.status
-    });
-    setIsModalOpen(true);
-  };
-
-  const openCreateModal = () => {
-    setModalMode("create");
-    setSelectedAppointment(null);
-    setFormData({ patient: "", provider: "Dr. Sarah Jenkins", type: "Checkup", date: "", time: "09:00", status: "Pending" });
-    setIsModalOpen(true);
-  };
-
-  const requestCancelAppointment = () => {
-    setIsCancelConfirmOpen(true);
-  };
-
-  const confirmCancelAppointment = () => {
-    setIsCancelConfirmOpen(false);
-    setIsModalOpen(false);
-    setAppointmentsData(appointmentsData.map(a => a.id === selectedAppointment?.id ? { ...a, status: "Cancelled" } : a));
-    addToast(`Appointment for ${selectedAppointment?.patient || "the selected patient"} cancelled.`, "warning");
-  };
 
   const renderCalendarView = () => {
     const year = currentMonth.getFullYear();
@@ -188,9 +98,8 @@ const Appointments = () => {
     for(let i = 1; i <= daysInMonth; i++) {
        const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
        
-       let dayAppts = appointmentsData.filter(app => {
+       let dayAppts = appointments.filter(app => {
          if (app.date === currentDateStr) return true;
-         // Handle 'Today'/'Tomorrow' mock variants
          const todayDate = new Date();
          if ((app.date.toLowerCase() === "today" || app.date === t("today")) && i === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear()) return true;
          
@@ -201,9 +110,6 @@ const Appointments = () => {
          return false;
        });
 
-       // We add some deterministic mock data for visual flavor if there's no actual appts, 
-       // but wait, if they say "real calendar", they probably want it mapping ONLY real data.
-       // So let's stick to real counts.
        const apptCount = dayAppts.length;
        
        let statusColor = "bg-success/10 text-success border-success/20"; // Free
@@ -258,9 +164,6 @@ const Appointments = () => {
         <h1 className="text-3xl font-bold text-text-dark">
           {t("appointments")}
         </h1>
-        <Button variant="primary" icon={Plus} onClick={openCreateModal}>
-          New Appointment
-        </Button>
       </div>
 
       <Card className="mb-6">
@@ -341,12 +244,6 @@ const Appointments = () => {
                     }}>
                     Remind
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openModifyModal(app)}>
-                    {t("modify")}
-                  </Button>
                 </div>
               </div>
             </div>
@@ -368,131 +265,6 @@ const Appointments = () => {
         </div>
         )}
       </Card>
-
-      {/* Appointment Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={
-          modalMode === "create"
-            ? "Schedule Appointment"
-            : `${t("modify")} Appointment`
-        }
-        maxWidthClassName="max-w-2xl"
-        footer={
-          <div className="flex items-center w-full">
-            {modalMode === "modify" && (
-              <Button
-                variant="ghost"
-                className="text-danger mr-auto"
-                onClick={requestCancelAppointment}>
-                Cancel Appointment
-              </Button>
-            )}
-            <div className="ml-auto flex gap-2">
-              <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
-                Close
-              </Button>
-              <Button variant="primary" onClick={handleSaveAppointment}>
-                {modalMode === "create" ? "Schedule" : "Save Changes"}
-              </Button>
-            </div>
-          </div>
-        }>
-        <form className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-text-dark">
-              Patient Name
-            </label>
-            <input
-              type="text"
-              value={formData.patient}
-              onChange={(e) => setFormData({...formData, patient: e.target.value})}
-              placeholder="Search existing patients..."
-              className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary text-text-dark"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-text-dark">
-                Provider
-              </label>
-              <select 
-                value={formData.provider}
-                onChange={(e) => setFormData({...formData, provider: e.target.value})}
-                className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary text-text-dark">
-                <option>Dr. Sarah Jenkins</option>
-                <option>Dr. Michael Chen</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-text-dark">
-                Appointment Type
-              </label>
-              <select 
-                value={formData.type}
-                onChange={(e) => setFormData({...formData, type: e.target.value})}
-                className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary text-text-dark">
-                <option>Checkup</option>
-                <option>Consultation</option>
-                <option>Follow-up</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-text-dark">
-                <CalendarIcon size={16} /> Date
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({...formData, date: e.target.value})}
-                onClick={(e) => e.target.showPicker?.()}
-                className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary text-text-dark cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-text-dark">
-                <Clock size={16} /> Time
-              </label>
-              <input
-                type="time"
-                value={formData.time}
-                onChange={(e) => setFormData({...formData, time: e.target.value})}
-                onClick={(e) => e.target.showPicker?.()}
-                className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary text-text-dark cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-text-dark">
-              Notes (Optional)
-            </label>
-            <textarea
-              rows="3"
-              className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary custom-scrollbar resize-none text-text-dark"></textarea>
-          </div>
-        </form>
-      </Modal>
-
-      <ConfirmDialog
-        isOpen={isCancelConfirmOpen}
-        title="Cancel Appointment"
-        message={
-          selectedAppointment
-            ? `Are you sure you want to cancel the appointment for ${selectedAppointment.patient}?`
-            : "Are you sure you want to cancel this appointment?"
-        }
-        confirmLabel="Cancel Appointment"
-        cancelLabel="Keep Appointment"
-        tone="danger"
-        onConfirm={confirmCancelAppointment}
-        onCancel={() => setIsCancelConfirmOpen(false)}
-      />
     </div>
   );
 };

@@ -10,28 +10,14 @@ import {
   TableCell,
 } from "../common/Table";
 import Modal from "../common/Modal";
-import ConfirmDialog from "../common/ConfirmDialog";
-import { useToast } from "../../context/ToastContext";
 import { useNavigate } from "react-router-dom";
-import { useTimeSaved } from "../../context/TimeSavedContext";
 
 const RiskTable = ({ patients }) => {
   const { t } = useLanguage();
-  const { addToast } = useToast();
   const navigate = useNavigate();
-  const { addTimeSaved } = useTimeSaved();
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [alertTarget, setAlertTarget] = useState(null);
 
   const closeDetailModal = () => setSelectedPatient(null);
-  const closeAlertDialog = () => setAlertTarget(null);
-
-  const sendAlert = () => {
-    if (!alertTarget) return;
-    addToast(`${t("sms_alert_sent")} ${alertTarget.name} (+20 min saved)`, "success");
-    addTimeSaved(20); // Prevented No-show
-    closeAlertDialog();
-  };
 
   return (
     <>
@@ -96,14 +82,6 @@ const RiskTable = ({ patients }) => {
               </TableCell>
               <TableCell className="text-center align-middle">
                 <div className="flex gap-2 justify-center items-center">
-                  {p.status === "high" && (
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => setAlertTarget(p)}>
-                      {t("send_alert")}
-                    </Button>
-                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -116,21 +94,6 @@ const RiskTable = ({ patients }) => {
           ))}
         </TableBody>
       </Table>
-
-      <ConfirmDialog
-        isOpen={Boolean(alertTarget)}
-        title={t("send_sms_alert")}
-        message={
-          alertTarget
-            ? `Are you sure you want to send an SMS alert to ${alertTarget.name}?`
-            : ""
-        }
-        confirmLabel={t("send_alert")}
-        cancelLabel={t("cancel")}
-        tone="warning"
-        onConfirm={sendAlert}
-        onCancel={closeAlertDialog}
-      />
 
       <Modal
         isOpen={Boolean(selectedPatient)}

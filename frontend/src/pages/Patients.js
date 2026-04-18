@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Skeleton } from "../components/common/Skeleton";
 import { useLanguage } from "../context/LanguageContext";
+import axios from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
-  UserPlus,
   FileText,
   MoreVertical,
   SlidersHorizontal,
@@ -31,23 +32,13 @@ const Patients = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   React.useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
-    if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-8 w-1/4 rounded-lg" />
-        <Skeleton className="h-[500px] w-full rounded-2xl" />
-      </div>
-    );
-  }
-
-  return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, []);
 
   const { t } = useLanguage();
   const { addTimeSaved } = useTimeSaved();
   const [searchTerm, setSearchTerm] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
-  const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientToDelete, setPatientToDelete] = useState(null);
   const { addToast } = useToast();
@@ -86,13 +77,7 @@ const Patients = () => {
     notes: p.notes || ""
   }));
   
-  const [newPatientData, setNewPatientData] = useState({
-      firstName: "",
-      lastName: "",
-      dob: "",
-      phone: "",
-      email: ""
-  });
+
 
   React.useEffect(() => {
     if (location.state?.editPatient) {
@@ -103,36 +88,22 @@ const Patients = () => {
     }
   }, [location.state, patientsList]);
 
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-1/4 rounded-lg" />
+        <Skeleton className="h-[500px] w-full rounded-2xl" />
+      </div>
+    );
+  }
+
   const filteredPatients = patientsList.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.id.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const handleAddPatient = (e) => {
-    e.preventDefault();
-    if(!newPatientData.firstName || !newPatientData.lastName) {
-       addToast("Please provide at least a name.", "warning");
-       return;
-    }
-    const newPt = {
-        id: "PT-" + Math.floor(2000 + Math.random() * 1000),
-        name: newPatientData.firstName + " " + newPatientData.lastName,
-        dob: newPatientData.dob,
-        phone: newPatientData.phone,
-        email: newPatientData.email,
-        lastVisit: "N/A",
-        status: "Active",
-        address: "N/A",
-        insurance: "N/A",
-        allergies: "None",
-        notes: ""
-    };
-    setPatientsList([newPt, ...patientsList]);
-    setIsAddPatientOpen(false);
-    setNewPatientData({firstName: "", lastName: "", dob: "", phone: "", email: ""});
-    addToast("New patient added successfully!", "success");
-  };
+
 
   const handleExport = () => {
     const headers = [
@@ -180,21 +151,13 @@ const Patients = () => {
 
   const confirmDelete = () => {
     if (!patientToDelete) return;
-    setPatientsList(patientsList.filter(p => p.id !== patientToDelete.id));
-    addToast(`${patientToDelete.name}'s record deleted.`, "warning");
-    setPatientToDelete(null);
+    deleteMutation.mutate(patientToDelete.id);
   };
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-text-dark">{t("patients")}</h1>
-        <Button
-          variant="primary"
-          icon={UserPlus}
-          onClick={() => setIsAddPatientOpen(true)}>
-          {t("add_patient")}
-        </Button>
       </div>
 
       <Card>
@@ -323,47 +286,7 @@ const Patients = () => {
         )}
       </Card>
 
-      <Modal
-        isOpen={isAddPatientOpen}
-        onClose={() => setIsAddPatientOpen(false)}
-        title="Add New Patient"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setIsAddPatientOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleAddPatient}>
-              Save Patient
-            </Button>
-          </>
-        }>
-        <form className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-text-dark">First Name</label>
-              <input type="text" value={newPatientData.firstName} onChange={e => setNewPatientData({...newPatientData, firstName: e.target.value})} className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm text-text-dark focus:border-primary focus:outline-none" />
-            </div>
-            <div className="space-y-2">
-               <label className="text-sm font-medium text-text-dark">Last Name</label>
-               <input type="text" value={newPatientData.lastName} onChange={e => setNewPatientData({...newPatientData, lastName: e.target.value})} className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm text-text-dark focus:border-primary focus:outline-none" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-               <label className="text-sm font-medium text-text-dark">Date of Birth</label>
-               <input type="date" value={newPatientData.dob} onChange={e => setNewPatientData({...newPatientData, dob: e.target.value})} onClick={e => e.target.showPicker?.()} className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm text-text-dark focus:border-primary focus:outline-none cursor-pointer [color-scheme:light] dark:[color-scheme:dark]" />
-            </div>
-            <div className="space-y-2">
-               <label className="text-sm font-medium text-text-dark">Phone Number</label>
-               <input type="tel" value={newPatientData.phone} onChange={e => setNewPatientData({...newPatientData, phone: e.target.value})} className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm text-text-dark focus:border-primary focus:outline-none" />
-            </div>
-          </div>
-          <div className="space-y-2">
-             <label className="text-sm font-medium text-text-dark">Email Address</label>
-             <input type="email" value={newPatientData.email} onChange={e => setNewPatientData({...newPatientData, email: e.target.value})} className="w-full bg-bg-main border border-border-light rounded-md px-3 py-2 text-sm text-text-dark focus:border-primary focus:outline-none" />
-          </div>
-        </form>
-      </Modal>
+
 
       <Modal
         isOpen={Boolean(selectedPatient)}

@@ -5,10 +5,10 @@ const TimeSavedContext = createContext();
 export const useTimeSaved = () => useContext(TimeSavedContext);
 
 export const TimeSavedProvider = ({ children }) => {
-  const [totalTimeSaved, setTotalTimeSaved] = useState(260); // Mock: 260 mins = 4h 20m
-  const [todayTimeSaved, setTodayTimeSaved] = useState(30);  // Mock: 30 mins
-  const [weekTimeSaved, setWeekTimeSaved] = useState(150); 
-  const [monthTimeSaved, setMonthTimeSaved] = useState(600);
+  const [totalTimeSaved, setTotalTimeSaved] = useState(0);
+  const [todayTimeSaved, setTodayTimeSaved] = useState(0);
+  const [weekTimeSaved, setWeekTimeSaved] = useState(0);
+  const [monthTimeSaved, setMonthTimeSaved] = useState(0);
 
   const addTimeSaved = (minutes) => {
     setTotalTimeSaved(prev => prev + minutes);

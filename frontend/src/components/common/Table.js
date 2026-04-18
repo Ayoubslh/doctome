@@ -34,9 +34,10 @@ export const TableRow = ({ children, className = "" }) => {
   return <tr className={`group ${className}`}>{children}</tr>;
 };
 
-export const TableCell = ({ children, className = "" }) => {
+export const TableCell = ({ children, className = "", ...props }) => {
   return (
     <td
+      {...props}
       className={`px-4 py-4 border-b border-border-light group-last:border-none align-middle ${className}`}>
       {children}
     </td>

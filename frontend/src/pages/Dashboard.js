@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import {
   Calendar,
@@ -14,44 +15,47 @@ import StatCard from "../components/dashboard/StatCard";
 import RiskTable from "../components/dashboard/RiskTable";
 import InsightCard from "../components/dashboard/InsightCard";
 import TrendChart from "../components/dashboard/TrendChart";
+import AppointmentTable from "../components/dashboard/AppointmentTable";
 import Card from "../components/common/Card";
 import { Skeleton } from "../components/common/Skeleton";
+import { useAppointmentStore } from "../store/appointmentStore";
 
-const api = "https://tarfkhobz.app.n8n.cloud";
+const api = "http://localhost:3000";
 
 const Dashboard = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const appointments = useAppointmentStore((state) => state.appointments);
+  const setAppointments = useAppointmentStore((state) => state.setAppointments);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [apptsData, setApptsData] = useState(null);
-  const [patientsData, setPatientsData] = useState(null);
-
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem("auth_token");
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-        
-        const [apptsRes, patientsRes] = await Promise.all([
-          axios.get(`${api}/webhook/dashboard/appointments`, config),
-          axios.get(`${api}/webhook/dashboard/patients`, config)
-        ]);
+    const fetchAppointments = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
-        if (apptsRes.data && apptsRes.data.success) {
-          setApptsData(apptsRes.data.dashboard);
+      try {
+        const params = {
+          user_id: user._id || user.user_id,
+        };
+
+        if (user.role) {
+          params.role = user.role;
         }
-        if (patientsRes.data && patientsRes.data.success) {
-          setPatientsData(patientsRes.data.dashboard);
-        }
+
+        const response = await axios.get(`${api}/appointments`, { params });
+        setAppointments(response.data || []);
       } catch (error) {
-        console.error("Dashboard fetch error:", error);
+        console.error("Appointment list fetch error:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchData();
-  }, []);
+
+    fetchAppointments();
+  }, [user, setAppointments]);
   const chartData = [
     { name: t("mon"), completed: 42, noShow: 12 },
     { name: t("tue"), completed: 48, noShow: 8 },
@@ -60,74 +64,69 @@ const Dashboard = () => {
     { name: t("fri"), completed: 55, noShow: 5 },
   ];
 
-  const patients = [
-    {
-      id: 1,
-      name: t("eleanor_pena"),
-      demo: t("demo_f34"),
-      time: t("time_0900"),
-      factors: [t("fac_raining"), t("fac_hist_high")],
-      notes: t("note_eleanor"),
-      prob: 85,
-      status: "high",
+  const todayString = new Date().toISOString().split("T")[0];
+  const yesterdayString = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  const todayAppointments = appointments.filter(
+    (apt) => apt.appointment_date === todayString
+  );
+  const yesterdayAppointments = appointments.filter(
+    (apt) => apt.appointment_date === yesterdayString
+  );
+  const uniqueActivePatients = new Set(
+    appointments.map((apt) => apt.patient_name || apt.patient_id)
+  ).size;
+
+  const stats = {
+    today: {
+      total: todayAppointments.length,
+      no_shows: todayAppointments.filter(
+        (apt) => apt.status === "no_show" || apt.risk_level === "HIGH"
+      ).length,
+      confirmed: todayAppointments.filter((apt) => apt.status === "confirmed").length,
     },
-    {
-      id: 2,
-      name: t("cody_fisher"),
-      demo: t("demo_m42"),
-      time: t("time_0930"),
-      factors: [t("fac_traffic"), t("fac_new")],
-      notes: t("note_cody"),
-      prob: 62,
-      status: "medium",
+    yesterday: {
+      total: yesterdayAppointments.length,
+      no_shows: yesterdayAppointments.filter(
+        (apt) => apt.status === "no_show" || apt.risk_level === "HIGH"
+      ).length,
+      confirmed: yesterdayAppointments.filter((apt) => apt.status === "confirmed").length,
     },
-    {
-      id: 3,
-      name: t("leslie_alexander"),
-      demo: t("demo_f28"),
-      time: t("time_1000"),
-      factors: [t("fac_reminded"), t("fac_local")],
-      notes: t("note_leslie"),
-      prob: 12,
-      status: "low",
-    },
-    {
-      id: 4,
-      name: t("ralph_edwards"),
-      demo: t("demo_m55"),
-      time: t("time_1045"),
-      factors: [t("fac_snow"), t("fac_hist_avg")],
-      notes: t("note_ralph"),
-      prob: 78,
-      status: "high",
-    },
-    {
-      id: 5,
-      name: t("wade_warren"),
-      demo: t("demo_m61"),
-      time: t("time_1115"),
-      factors: [t("fac_sms")],
-      notes: t("note_wade"),
-      prob: 5,
-      status: "low",
-    },
-    {
-      id: 6,
-      name: t("jane_cooper"),
-      demo: t("demo_f45"),
-      time: t("time_1200"),
-      factors: [t("fac_hist_low"), t("fac_local")],
-      notes: t("note_jane"),
-      prob: 18,
-      status: "low",
-    },
-  ];
+  };
 
   const calcTrend = (today, yesterday) => {
     if (today == null || yesterday == null) return "0";
     const diff = today - yesterday;
     return diff > 0 ? `+${diff}` : diff.toString();
   };
+
+  const getRiskStatus = (apt) => {
+    if (apt.risk_level) return apt.risk_level.toLowerCase();
+    if (typeof apt.no_show_probability === "number") {
+      if (apt.no_show_probability >= 70) return "high";
+      if (apt.no_show_probability >= 40) return "medium";
+    }
+    return "low";
+  };
+
+  const riskRows = appointments.map((apt) => ({
+    id: apt._id || apt.appointment_id,
+    name: apt.patient_name || t("unknown_patient"),
+    demo: apt.clinic_name || apt.specialty || t("unknown"),
+    time:
+      apt.appointment_hour != null
+        ? `${apt.appointment_hour}:00`
+        : apt.appointment_date || t("n_a"),
+    factors: apt.top_risk_drivers?.length
+      ? apt.top_risk_drivers
+      : [getRiskStatus(apt)],
+    notes: apt.notes || t("no_notes"),
+    prob:
+      typeof apt.no_show_probability === "number"
+        ? apt.no_show_probability
+        : Math.round(apt.risk_score || 0),
+    status: getRiskStatus(apt),
+  }));
 
   return (
     <div>
@@ -148,34 +147,34 @@ const Dashboard = () => {
           <>
             <StatCard
               title={t("total_appointments")}
-              value={apptsData?.today?.total?.toString() || "0"}
+              value={stats.today.total.toString() || "0"}
               icon={Calendar}
-              trend={calcTrend(apptsData?.today?.total, apptsData?.yesterday?.total)}
+              trend={calcTrend(stats.today.total, stats.yesterday.total)}
               trendLabel={t("from_yesterday")}
               colorClass="primary"
             />
             <StatCard
               title={t("predicted_no_shows")}
-              value={apptsData?.today?.no_shows?.toString() || "0"}
+              value={stats.today.no_shows.toString() || "0"}
               icon={AlertCircle}
-              trend={calcTrend(apptsData?.today?.no_shows, apptsData?.yesterday?.no_shows)}
+              trend={calcTrend(stats.today.no_shows, stats.yesterday.no_shows)}
               trendLabel={t("from_yesterday")}
               colorClass="danger"
             />
             <StatCard
               title={t("confirmed_visits")}
-              value={apptsData?.today?.confirmed?.toString() || "0"}
+              value={stats.today.confirmed.toString() || "0"}
               icon={UserCheck}
-              trend={calcTrend(apptsData?.today?.confirmed, apptsData?.yesterday?.confirmed)}
+              trend={calcTrend(stats.today.confirmed, stats.yesterday.confirmed)}
               trendLabel={t("from_yesterday")}
               colorClass="success"
             />
             <StatCard
-              title="Active Patients"
-              value={patientsData?.total_active?.toString() || "0"}
+              title={t("active_patients")}
+              value={uniqueActivePatients.toString() || "0"}
               icon={TrendingUp}
-              trend={"+" + (patientsData?.new_this_week || "0")}
-              trendLabel="this week"
+              trend={"+0"}
+              trendLabel={t("this_week")}
               colorClass="info"
             />
           </>
@@ -204,7 +203,7 @@ const Dashboard = () => {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : (
-            <RiskTable patients={patients} />
+            <RiskTable patients={riskRows} />
           )}
         </Card>
 
@@ -255,6 +254,8 @@ const Dashboard = () => {
           </Card>
         </div>
       </div>
+
+      <AppointmentTable appointments={appointments} />
     </div>
   );
 };

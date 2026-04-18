@@ -143,7 +143,6 @@ const Analytics = () => {
             </h2>
           </div>
           <div className="flex-grow flex items-center justify-center">
-            {/* Simple mock of a pie chart using Tailwind CSS concentric borders as placeholder */}
             <div className="relative w-48 h-48 rounded-full border-[24px] border-primary border-t-success border-r-warning border-l-danger flex items-center justify-center">
               <div className="text-center">
                 <span className="block text-2xl font-bold text-text-dark">

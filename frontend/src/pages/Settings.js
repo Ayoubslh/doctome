@@ -1,14 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
 import { User, Bell, Building, Shield, Save } from "lucide-react";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import { useToast } from "../context/ToastContext";
 
+const api = "http://localhost:3000";
+
 const Settings = () => {
   const { t } = useLanguage();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
   const [profileImage, setProfileImage] = useState(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [specialty, setSpecialty] = useState("");
+  const [clinicName, setClinicName] = useState("");
   const { addToast } = useToast();
 
   const tabs = [
@@ -20,9 +31,43 @@ const Settings = () => {
 
   const fileInputRef = React.useRef(null);
 
-  const handleSaveChanges = (e) => {
+  useEffect(() => {
+    if (!user) return;
+    const [first = "", ...rest] = (user.full_name || "").split(" ");
+    setFirstName(first);
+    setLastName(rest.join(" "));
+    setEmail(user.email || "");
+    setPhone(user.phone || "");
+    setSpecialty(user.specialty || "");
+    setClinicName(user.clinic_name || "");
+  }, [user]);
+
+  const handleSaveChanges = async (e) => {
     e.preventDefault();
-    addToast("Settings saved successfully.", "success");
+    if (!user) return;
+
+    const payload = {
+      full_name: `${firstName} ${lastName}`.trim(),
+      email,
+      phone,
+    };
+
+    if (user.type === "doctor") {
+      payload.specialty = specialty;
+      payload.clinic_name = clinicName;
+    }
+
+    const userId = user._id || user.user_id;
+    const route = user.type === "doctor" ? "doctors" : "patients";
+
+    try {
+      const response = await axios.put(`${api}/${route}/${userId}`, payload);
+      updateUser(response.data);
+      addToast("Settings saved successfully.", "success");
+    } catch (error) {
+      console.error("Settings save failed", error);
+      addToast("Failed to update profile.", "error");
+    }
   };
 
   const handleChangePhoto = () => {
@@ -97,7 +142,11 @@ const Settings = () => {
                   />
                 ) : (
                   <div className="w-24 h-24 rounded-full bg-border-subtle flex items-center justify-center text-2xl font-bold text-text-dark shrink-0 shadow-sm">
-                    SJ
+                    {(user?.full_name || "Unknown")
+                      .split(" ")
+                      .map((part) => part[0])
+                      .join("")
+                      .toUpperCase()}
                   </div>
                 )}
                 <div>
@@ -137,7 +186,8 @@ const Settings = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue="Sarah"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
                       className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     />
                   </div>
@@ -147,7 +197,8 @@ const Settings = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue="Jenkins"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
                       className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     />
                   </div>
@@ -157,7 +208,8 @@ const Settings = () => {
                     </label>
                     <input
                       type="email"
-                      defaultValue="dr.jenkins@doctome.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     />
                   </div>
@@ -167,7 +219,8 @@ const Settings = () => {
                     </label>
                     <input
                       type="tel"
-                      defaultValue="(555) 123-4567"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                       className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     />
                   </div>
@@ -177,7 +230,8 @@ const Settings = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue="Cardiologist"
+                      value={specialty}
+                      onChange={(e) => setSpecialty(e.target.value)}
                       className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     />
                   </div>
@@ -260,7 +314,8 @@ const Settings = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue="Jenkins Cardiology Center"
+                    value={clinicName}
+                    onChange={(e) => setClinicName(e.target.value)}
                     className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark"
                   />
                 </div>
