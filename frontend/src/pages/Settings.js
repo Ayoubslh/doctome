@@ -9,7 +9,7 @@ import Button from "../components/common/Button";
 import { useToast } from "../context/ToastContext";
 import wilayas from "../data/wilayas.json";
 
-const api = "http://localhost:3000";
+const api = "https://doctomiback.onrender.com";
 
 const Settings = () => {
   const { t } = useLanguage();

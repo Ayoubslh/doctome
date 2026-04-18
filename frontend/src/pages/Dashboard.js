@@ -20,7 +20,7 @@ import Card from "../components/common/Card";
 import { Skeleton } from "../components/common/Skeleton";
 import { useAppointmentStore } from "../store/appointmentStore";
 
-const api = "http://localhost:3000";
+const api = "https://doctomiback.onrender.com";
 
 const Dashboard = () => {
   const { t } = useLanguage();

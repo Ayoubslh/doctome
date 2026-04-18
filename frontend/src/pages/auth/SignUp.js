@@ -7,7 +7,7 @@ import axios from "axios";
 
 import { useToast } from "../../context/ToastContext";
 
-const api = "http://localhost:3000";
+const api = "https://doctomiback.onrender.com";
 
 const SignUp = () => {
   const navigate = useNavigate();

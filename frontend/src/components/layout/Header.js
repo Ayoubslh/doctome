@@ -7,7 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Dropdown, { DropdownItem } from "../common/Dropdown";
 
-const api = "http://localhost:3000";
+const api = "https://doctomiback.onrender.com";
 
 const Header = () => {
   const { isDarkMode, toggleTheme } = useTheme();

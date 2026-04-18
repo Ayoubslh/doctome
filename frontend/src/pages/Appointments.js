@@ -40,7 +40,7 @@ const Appointments = () => {
       }
 
       try {
-        const response = await axios.get(`http://localhost:3000/appointments?user_id=${user._id || user.user_id}`);
+        const response = await axios.get(`https://doctomiback.onrender.com/appointments?user_id=${user._id || user.user_id}`);
         console.log("All Appointments:", response.data);
         setAppointments(response.data || []);
       } catch (error) {

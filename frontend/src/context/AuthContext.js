@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 
-const api = "http://localhost:3000";
+const api = "https://doctomiback.onrender.com";
 
 const AuthContext = createContext();
 
