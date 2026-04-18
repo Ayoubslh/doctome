@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
@@ -6,18 +7,24 @@ import { User, Bell, Building, Shield, Save } from "lucide-react";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import { useToast } from "../context/ToastContext";
+import wilayas from "../data/wilayas.json";
 
 const api = "http://localhost:3000";
 
 const Settings = () => {
   const { t } = useLanguage();
   const { user, updateUser } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isFromSignup = location.state?.fromSignup || false;
+
   const [activeTab, setActiveTab] = useState("profile");
   const [profileImage, setProfileImage] = useState(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [wilaya, setWilaya] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [clinicName, setClinicName] = useState("");
   const { addToast } = useToast();
@@ -38,6 +45,7 @@ const Settings = () => {
     setLastName(rest.join(" "));
     setEmail(user.email || "");
     setPhone(user.phone || "");
+    setWilaya(user.wilaya || "");
     setSpecialty(user.specialty || "");
     setClinicName(user.clinic_name || "");
   }, [user]);
@@ -50,6 +58,7 @@ const Settings = () => {
       full_name: `${firstName} ${lastName}`.trim(),
       email,
       phone,
+      wilaya,
     };
 
     if (user.type === "doctor") {
@@ -64,6 +73,14 @@ const Settings = () => {
       const response = await axios.put(`${api}/${route}/${userId}`, payload);
       updateUser(response.data);
       addToast("Settings saved successfully.", "success");
+      
+      if (isFromSignup && activeTab === "profile") {
+        setActiveTab("clinic");
+        addToast("Please complete your Clinic Details next.", "info");
+      } else if (isFromSignup && activeTab === "clinic") {
+        navigate("/");
+        addToast("Setup complete! Welcome to Doctome.", "success");
+      }
     } catch (error) {
       console.error("Settings save failed", error);
       addToast("Failed to update profile.", "error");
@@ -100,8 +117,14 @@ const Settings = () => {
   return (
     <div>
       <h1 className="text-3xl font-bold text-text-dark mb-6">
-        {t("settings")}
+        {isFromSignup ? "Complete Your Profile" : t("settings")}
       </h1>
+
+      {isFromSignup && (
+        <div className="mb-6 bg-primary-light border-l-4 border-primary text-primary-dark p-4 rounded-r-md">
+          <p className="text-sm font-medium">Welcome to Doctome! Let's get your profile and clinic details set up to personalize your experience.</p>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Settings Navigation Sidebar */}
@@ -224,6 +247,23 @@ const Settings = () => {
                       className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-text-dark block">
+                      Wilaya
+                    </label>
+                    <select
+                      value={wilaya}
+                      onChange={(e) => setWilaya(e.target.value)}
+                      className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    >
+                      <option value="">Select Wilaya</option>
+                      {wilayas.map((w) => (
+                        <option key={w.id} value={w.name}>
+                          {w.id} - {w.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-text-dark block">
                       Specialty / Title
@@ -237,7 +277,7 @@ const Settings = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-4">
                   <Button type="submit" variant="primary" icon={Save}>
                     {t("save_changes")}
                   </Button>
@@ -329,7 +369,16 @@ const Settings = () => {
                     className="w-full bg-bg-main border border-border-light rounded-md px-4 py-2 text-sm text-text-dark"
                   />
                 </div>
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end gap-4 pt-4">
+                  {isFromSignup && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate("/")}
+                    >
+                      Skip for now
+                    </Button>
+                  )}
                   <Button type="submit" variant="primary">
                     Save Clinic Details
                   </Button>

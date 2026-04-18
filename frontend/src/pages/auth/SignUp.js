@@ -30,8 +30,9 @@ const SignUp = () => {
     },
     onSuccess: (data) => {
       if (data.token) {
-        addToast("Account created successfully. Please sign in.", "success");
-        navigate("/login");
+        login(data.token, data.user);
+        addToast("Account created successfully. Welcome!", "success");
+        navigate("/settings", { replace: true, state: { fromSignup: true } });
       } else {
         addToast("Failed to create account", "danger");
       }

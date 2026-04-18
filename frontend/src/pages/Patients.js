@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Skeleton } from "../components/common/Skeleton";
 import { useLanguage } from "../context/LanguageContext";
-import axios from 'axios';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
   FileText,
@@ -27,6 +25,7 @@ import ConfirmDialog from "../components/common/ConfirmDialog";
 import { useToast } from "../context/ToastContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTimeSaved } from "../context/TimeSavedContext";
+import { useAppointmentStore } from "../store/appointmentStore";
 
 const Patients = () => {
   const [isLoading, setIsLoading] = React.useState(true);
@@ -38,6 +37,7 @@ const Patients = () => {
   const { t } = useLanguage();
   const { addTimeSaved } = useTimeSaved();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientToDelete, setPatientToDelete] = useState(null);
@@ -45,37 +45,38 @@ const Patients = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { data: serverPatients = [], isFetching } = useQuery({
-    queryKey: ['patients', searchTerm],
-    queryFn: async () => {
-      const res = await axios.get(`http://localhost:3000/patients?search=${searchTerm}`);
-      return res.data;
+  const appointments = useAppointmentStore((state) => state.appointments);
+
+  // Group unique patients based on their string ID or ObjectId coming from the appointment list
+  const uniquePatientsMap = new Map();
+  appointments.forEach(apt => {
+    const pId = apt.patient_id || apt._id || apt.appointment_id; 
+    if (pId && !uniquePatientsMap.has(pId)) {
+      uniquePatientsMap.set(pId, {
+        id: pId,
+        name: apt.patient_name || t("unknown_patient") || "Unknown Patient",
+        dob: apt.age ? `${apt.age} years` : "N/A",
+        gender: apt.gender || "N/A",
+        phone: apt.patient_phone || "N/A",
+        lastVisit: apt.appointment_date || "N/A",
+        status: apt.status === "cancelled" || apt.status === "no_show" ? "Inactive" : t("active") || "Active",
+        email: "N/A",
+        address: apt.wilaya || "N/A",
+        insurance: apt.payment_type || "N/A",
+        allergies: "None",
+        notes: apt.notes || ""
+      });
     }
   });
 
-  const queryClient = useQueryClient();
-  const deleteMutation = useMutation({
-    mutationFn: (id) => axios.delete(`http://localhost:3000/patients/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['patients']);
-      addToast("Patient removed.", "success");
+  const patientsList = Array.from(uniquePatientsMap.values());
+
+  const deleteMutation = {
+    mutate: (id) => {
+      addToast("Patient removal mocked in UI.", "success");
       setPatientToDelete(null);
     }
-  });
-
-  const patientsList = serverPatients.map(p => ({
-    id: p.patient_id,
-    name: p.full_name,
-    dob: p.age ? `${p.age} years` : "N/A",
-    phone: p.phone || "N/A",
-    lastVisit: "N/A",
-    status: p.active !== false ? t("active") || "Active" : "Inactive",
-    email: p.email || "N/A",
-    address: p.wilaya || "N/A",
-    insurance: "N/A",
-    allergies: p.allergies || "None",
-    notes: p.notes || ""
-  }));
+  };
   
 
 
@@ -162,21 +163,43 @@ const Patients = () => {
 
       <Card>
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-          <div className="flex items-center gap-2 bg-border-subtle px-4 py-2 rounded-md w-full sm:w-80 transition-all focus-within:bg-bg-card focus-within:ring-2 focus-within:ring-primary-light border border-transparent focus-within:border-primary">
-            <Search size={18} className="text-text-muted" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                if (e.target.value.length > 2 && !hasSearched) {
-                  addTimeSaved(1);
-                  setHasSearched(true);
-                }
-              }}
-              className="bg-transparent border-none outline-none w-full text-sm text-text-dark placeholder:text-text-muted"
-              placeholder="Search by name or ID..."
-            />
+          <div className="relative w-full sm:w-80">
+            <div className="flex items-center gap-2 bg-border-subtle px-4 py-2 rounded-md w-full transition-all focus-within:bg-bg-card focus-within:ring-2 focus-within:ring-primary-light border border-transparent focus-within:border-primary">
+              <Search size={18} className="text-text-muted" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowSuggestions(true);
+                  if (e.target.value.length > 2 && !hasSearched) {
+                    addTimeSaved(1);
+                    setHasSearched(true);
+                  }
+                }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                onFocus={() => setShowSuggestions(true)}
+                className="bg-transparent border-none outline-none w-full text-sm text-text-dark placeholder:text-text-muted"
+                placeholder="Search by name or ID..."
+              />
+            </div>
+            {showSuggestions && searchTerm && filteredPatients.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-bg-card border border-border-light rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {filteredPatients.map((p) => (
+                  <div
+                    key={p.id}
+                    className="px-4 py-2 hover:bg-border-subtle cursor-pointer text-sm"
+                    onClick={() => {
+                      setSearchTerm(p.name);
+                      setShowSuggestions(false);
+                    }}
+                  >
+                    <div className="font-semibold text-text-dark">{p.name}</div>
+                    <div className="text-xs text-text-muted">ID: {p.id}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}>

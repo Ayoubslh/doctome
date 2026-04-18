@@ -46,6 +46,7 @@ const Dashboard = () => {
         }
 
         const response = await axios.get(`${api}/appointments`, { params });
+        console.log("All Appointments Dashboard:", response.data);
         setAppointments(response.data || []);
       } catch (error) {
         console.error("Appointment list fetch error:", error);
@@ -109,13 +110,13 @@ const Dashboard = () => {
     return "low";
   };
 
-  const riskRows = appointments.map((apt) => ({
+  const riskRows = appointments.slice(0, 5).map((apt) => ({
     id: apt._id || apt.appointment_id,
     name: apt.patient_name || t("unknown_patient"),
-    demo: apt.clinic_name || apt.specialty || t("unknown"),
+    demo: (apt.age) ? `${apt.age} yrs` : apt.clinic_name || apt.specialty || t("unknown"),
     time:
       apt.appointment_hour != null
-        ? `${apt.appointment_hour}:00`
+        ? `${apt.appointment_date} ${apt.appointment_hour}:00`
         : apt.appointment_date || t("n_a"),
     factors: apt.top_risk_drivers?.length
       ? apt.top_risk_drivers
@@ -124,7 +125,7 @@ const Dashboard = () => {
     prob:
       typeof apt.no_show_probability === "number"
         ? apt.no_show_probability
-        : Math.round(apt.risk_score || 0),
+        : Math.round(apt.risk_score || 0) || 5, // fallback if missing
     status: getRiskStatus(apt),
   }));
 
@@ -186,7 +187,7 @@ const Dashboard = () => {
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-text-dark">
-              {t("todays_risk_assessment")}
+              {t("upcoming_risk_assessment") || "Upcoming Risk Assessment"}
             </h2>
             <Link
               to="/appointments"

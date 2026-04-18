@@ -41,6 +41,7 @@ const Appointments = () => {
 
       try {
         const response = await axios.get(`http://localhost:3000/appointments?user_id=${user._id || user.user_id}`);
+        console.log("All Appointments:", response.data);
         setAppointments(response.data || []);
       } catch (error) {
         console.error("Error fetching appointments:", error);
@@ -62,13 +63,14 @@ const Appointments = () => {
   }
 
   const filteredAppointments = appointments.filter((app) => {
+    const status = (app.status || "").toLowerCase();
+    
     if (activeTab === "upcoming")
-      return (
-        app.status !== "Cancelled" && app.status !== "cancelled" &&
-        (app.date === t("today") || app.date === t("tomorrow") || app.status === t("confirmed") || app.status === t("pending") || app.status === "Pending" || app.status === "Confirmed")
-      );
-    if (activeTab === "past") return false;
-    if (activeTab === "cancelled") return app.status === "Cancelled" || app.status === "cancelled";
+      return status !== "cancelled" && status !== "completed" && status !== "no_show";
+    if (activeTab === "past") 
+      return status === "completed" || status === "no_show";
+    if (activeTab === "cancelled") 
+      return status === "cancelled";
     return true;
   });
 
@@ -99,13 +101,16 @@ const Appointments = () => {
        const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
        
        let dayAppts = appointments.filter(app => {
-         if (app.date === currentDateStr) return true;
+         const dateVal = app.appointment_date;
+         if (!dateVal) return false;
+         
+         if (dateVal === currentDateStr) return true;
          const todayDate = new Date();
-         if ((app.date.toLowerCase() === "today" || app.date === t("today")) && i === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear()) return true;
+         if ((dateVal.toLowerCase() === "today" || dateVal === t("today")) && i === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear()) return true;
          
          const tomorrow = new Date(todayDate);
          tomorrow.setDate(tomorrow.getDate() + 1);
-         if ((app.date.toLowerCase() === "tomorrow" || app.date === t("tomorrow")) && i === tomorrow.getDate() && month === tomorrow.getMonth() && year === tomorrow.getFullYear()) return true;
+         if ((dateVal.toLowerCase() === "tomorrow" || dateVal === t("tomorrow")) && i === tomorrow.getDate() && month === tomorrow.getMonth() && year === tomorrow.getFullYear()) return true;
          
          return false;
        });
@@ -195,9 +200,15 @@ const Appointments = () => {
            </div>
         ) : (
         <div className="space-y-4">
-          {filteredAppointments.map((app) => (
+          {filteredAppointments.map((app) => {
+            const timeStr = app.appointment_hour != null ? `${app.appointment_hour}:00` : t("n_a");
+            const dateStr = app.appointment_date || t("n_a");
+            const providerStr = app.clinic_name || app.specialty || "Doctome Clinic";
+            const statusLabel = app.status || "scheduled";
+            
+            return (
             <div
-              key={app.id}
+              key={app._id || app.appointment_id}
               className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 rounded-lg border border-border-light hover:bg-border-subtle transition-all">
               <div className="flex items-start gap-4 mb-4 md:mb-0">
                 <div className="w-12 h-12 rounded-lg bg-primary-light text-primary flex items-center justify-center shrink-0">
@@ -205,32 +216,32 @@ const Appointments = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-text-dark text-lg">
-                    {app.patient}
+                    {app.patient_name || t("unknown_patient")}
                   </h3>
                   <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-text-muted">
                     <span className="flex items-center gap-1">
-                      <Clock size={14} /> {app.time}
+                      <Clock size={14} /> {timeStr}
                     </span>
                     <span className="w-1 h-1 rounded-full bg-border-light"></span>
-                    <span>{app.date}</span>
+                    <span>{dateStr}</span>
                     <span className="w-1 h-1 rounded-full bg-border-light"></span>
-                    <span>{app.provider}</span>
+                    <span>{providerStr}</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-between w-full md:w-auto gap-4">
                 <div className="flex gap-2 shrink-0">
-                  <Badge variant="neutral">{app.type}</Badge>
+                  <Badge variant="neutral">{app.payment_type || "Cash"}</Badge>
                   <Badge
                     variant={
-                      app.status === t("confirmed") || app.status === "Confirmed"
+                      statusLabel === "confirmed" || statusLabel === "completed"
                         ? "success"
-                        : app.status === t("pending") || app.status === "Pending"
+                        : statusLabel === "scheduled"
                           ? "warning"
                           : "danger"
                     }>
-                    {app.status}
+                    {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
                   </Badge>
                 </div>
                 <div className="flex gap-2">
@@ -239,15 +250,16 @@ const Appointments = () => {
                     size="sm"
                     className="text-primary hover:bg-primary/10 transition-colors"
                     onClick={() => {
-                      addTimeSaved(2); // Reminder Sent
-                      addToast(`Reminder sent to ${app.patient} (+2 min saved)`, "success");
+                      addTimeSaved(2);
+                      addToast(`Reminder sent to ${app.patient_name} (+2 min saved)`, "success");
                     }}>
                     Remind
                   </Button>
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {filteredAppointments.length === 0 && (
             <div className="text-center py-12">

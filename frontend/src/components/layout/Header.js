@@ -16,13 +16,7 @@ const Header = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate("/patients", { state: { search: searchQuery } });
-      setSearchQuery("");
-    }
-  };
+ 
 
   const [notifications, setNotifications] = useState([]);
 
@@ -103,20 +97,7 @@ const Header = () => {
       {/* Empty div for flexbox spacing (left) */}
       <div className="w-10"></div>
 
-      <div className="flex-grow flex justify-center px-4">
-        <form
-          onSubmit={handleSearch}
-          className="flex items-center gap-2 bg-border-subtle px-4 py-2.5 rounded-full w-full max-w-2xl border border-transparent transition-all focus-within:bg-bg-main focus-within:border-primary focus-within:ring-4 focus-within:ring-primary-light">
-          <Search size={18} className="text-text-muted shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none outline-none w-full text-sm text-text-dark placeholder:text-text-muted"
-            placeholder={t("search_placeholder")}
-          />
-        </form>
-      </div>
+     
 
       <div className="flex items-center gap-4 shrink-0 relative z-50">
         <Dropdown
