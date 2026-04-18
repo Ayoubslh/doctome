@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Button from "../../components/common/Button";
+import { useAuth } from "../../context/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -10,6 +11,7 @@ const api = "http://localhost:3000";
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const { addToast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -23,10 +25,7 @@ const SignUp = () => {
 
   const signupMutation = useMutation({
     mutationFn: async (userData) => {
-      const response = await axios.post(
-        `${api}/auth/signup`,
-        userData,
-      );
+      const response = await axios.post(`${api}/auth/signup`, userData);
       return response.data;
     },
     onSuccess: (data) => {

@@ -21,10 +21,7 @@ const Login = () => {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials) => {
-      const response = await axios.post(
-        `${api}/auth/login`,
-        credentials,
-      );
+      const response = await axios.post(`${api}/auth/login`, credentials);
       return response.data;
     },
     onSuccess: (data) => {
@@ -110,18 +107,6 @@ const Login = () => {
           disabled={loginMutation.isPending}
           className="w-full py-3 mt-6 shadow-md hover:shadow-lg transition-shadow text-base font-semibold">
           {loginMutation.isPending ? "Signing In..." : "Sign In"}
-        </Button>
-        
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => {
-            login("demo-token", { role: "doctor", user_id: "demo-id", username: "Demo Doctor" });
-            addToast("Logged in with Demo Account", "success");
-            navigate("/");
-          }}
-          className="w-full py-3 mt-4 shadow-sm hover:shadow-md transition-shadow text-base font-semibold">
-          Use Demo Account
         </Button>
       </form>
 

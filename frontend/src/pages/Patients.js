@@ -31,7 +31,16 @@ const Patients = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   React.useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
+    if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-1/4 rounded-lg" />
+        <Skeleton className="h-[500px] w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  return () => clearTimeout(timer);
   }, []);
 
   const { t } = useLanguage();
@@ -45,48 +54,37 @@ const Patients = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [patientsList, setPatientsList] = useState([
-    {
-      id: "PT-1001",
-      name: t("eleanor_pena") || "Eleanor Pena",
-      dob: "12/04/1988",
-      phone: "(555) 123-4567",
-      lastVisit: "12 Oct 2025",
-      status: t("active") || "Active",
-      email: "eleanor.pena@example.com",
-      address: "18 Cedar Lane, Springfield",
-      insurance: "Blue Horizon PPO",
-      allergies: "Penicillin",
-      notes:
-        "Prefers morning appointments and responds quickly to SMS reminders.",
-    },
-    {
-      id: "PT-1002",
-      name: t("cody_fisher") || "Cody Fisher",
-      dob: "23/08/1975",
-      phone: "(555) 234-5678",
-      lastVisit: "05 Sep 2025",
-      status: "Inactive",
-      email: "cody.fisher@example.com",
-      address: "92 River Street, Springfield",
-      insurance: "Apex HMO",
-      allergies: "None recorded",
-      notes: "Needs a second reminder call before most appointments.",
-    },
-    {
-      id: "PT-1003",
-      name: t("leslie_alexander") || "Leslie Alexander",
-      dob: "04/11/1992",
-      phone: "(555) 345-6789",
-      lastVisit: "14 Oct 2025",
-      status: t("active") || "Active",
-      email: "leslie.alexander@example.com",
-      address: "441 Oak Drive, Springfield",
-      insurance: "Blue Horizon PPO",
-      allergies: "Latex",
-      notes: "Excellent follow-up adherence and usually arrives early.",
-    },
-  ]);
+  const { data: serverPatients = [], isFetching } = useQuery({
+    queryKey: ['patients', searchTerm],
+    queryFn: async () => {
+      const res = await axios.get(`http://localhost:3000/patients?search=${searchTerm}`);
+      return res.data;
+    }
+  });
+
+  const queryClient = useQueryClient();
+  const deleteMutation = useMutation({
+    mutationFn: (id) => axios.delete(`http://localhost:3000/patients/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['patients']);
+      addToast("Patient removed.", "success");
+      setPatientToDelete(null);
+    }
+  });
+
+  const patientsList = serverPatients.map(p => ({
+    id: p.patient_id,
+    name: p.full_name,
+    dob: p.age ? `${p.age} years` : "N/A",
+    phone: p.phone || "N/A",
+    lastVisit: "N/A",
+    status: p.active !== false ? t("active") || "Active" : "Inactive",
+    email: p.email || "N/A",
+    address: p.wilaya || "N/A",
+    insurance: "N/A",
+    allergies: p.allergies || "None",
+    notes: p.notes || ""
+  }));
   
   const [newPatientData, setNewPatientData] = useState({
       firstName: "",
@@ -104,15 +102,6 @@ const Patients = () => {
       window.history.replaceState({}, document.title);
     }
   }, [location.state, patientsList]);
-
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-8 w-1/4 rounded-lg" />
-        <Skeleton className="h-[500px] w-full rounded-2xl" />
-      </div>
-    );
-  }
 
   const filteredPatients = patientsList.filter(
     (p) =>

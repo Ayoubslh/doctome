@@ -26,12 +26,6 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      if (localStorage.getItem("auth_token") === "demo-token") {
-        setUser({ role: "doctor", user_id: "demo-id", username: "Demo Doctor" });
-        setIsAuthenticated(true);
-        setIsLoading(false);
-        return;
-      }
       const response = await axios.get(`${api}/auth/me`);
       if (response.data && response.data.user_id) {
         setUser(response.data);
