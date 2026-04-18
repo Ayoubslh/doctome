@@ -1,10 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAppointments, createAppointment, updateAppointment, deleteAppointment } from "../services/appointments";
+import {
+  getAppointments,
+  createAppointment,
+  updateAppointment,
+  deleteAppointment,
+} from "../services/appointments";
 
 export const useAppointments = () => {
   return useQuery({
     queryKey: ["appointments"],
-    queryFn: getAppointments
+    queryFn: getAppointments,
   });
 };
 
@@ -15,7 +20,7 @@ export const useCreateAppointment = () => {
     mutationFn: createAppointment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    }
+    },
   });
 };
 
@@ -26,7 +31,7 @@ export const useUpdateAppointment = () => {
     mutationFn: updateAppointment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    }
+    },
   });
 };
 
@@ -37,6 +42,6 @@ export const useDeleteAppointment = () => {
     mutationFn: deleteAppointment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    }
+    },
   });
 };

@@ -104,8 +104,9 @@ const Dashboard = () => {
   const getRiskStatus = (apt) => {
     if (apt.risk_level) return apt.risk_level.toLowerCase();
     if (typeof apt.no_show_probability === "number") {
-      if (apt.no_show_probability >= 70) return "high";
-      if (apt.no_show_probability >= 40) return "medium";
+      const probPercent = apt.no_show_probability * 100;
+      if (probPercent >= 70) return "high";
+      if (probPercent >= 40) return "medium";
     }
     return "low";
   };
@@ -124,8 +125,8 @@ const Dashboard = () => {
     notes: apt.notes || t("no_notes"),
     prob:
       typeof apt.no_show_probability === "number"
-        ? apt.no_show_probability
-        : Math.round(apt.risk_score || 0) || 5, // fallback if missing
+        ? Math.round(apt.no_show_probability * 100)
+        : Math.round((apt.risk_score || 0) * 100) || 5, // fallback if missing
     status: getRiskStatus(apt),
   }));
 
@@ -261,7 +262,7 @@ const Dashboard = () => {
   );
 };
 
-const HistoryIcon = ({ size }) => (
+const HistoryIcon = ({ size }) => ( 
   <svg
     width={size}
     height={size}

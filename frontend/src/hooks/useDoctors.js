@@ -1,10 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDoctors, createDoctor, updateDoctor, deleteDoctor } from "../services/doctors";
+import {
+  getDoctors,
+  createDoctor,
+  updateDoctor,
+  deleteDoctor,
+} from "../services/doctors";
 
 export const useDoctors = () => {
   return useQuery({
     queryKey: ["doctors"],
-    queryFn: getDoctors
+    queryFn: getDoctors,
   });
 };
 
@@ -15,7 +20,7 @@ export const useCreateDoctor = () => {
     mutationFn: createDoctor,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
-    }
+    },
   });
 };
 
@@ -26,7 +31,7 @@ export const useUpdateDoctor = () => {
     mutationFn: updateDoctor,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
-    }
+    },
   });
 };
 
@@ -37,6 +42,6 @@ export const useDeleteDoctor = () => {
     mutationFn: deleteDoctor,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["doctors"] });
-    }
+    },
   });
 };
