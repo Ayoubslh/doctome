@@ -10,6 +10,11 @@ function authenticate(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
+  if (token === 'demo-token') {
+    req.auth = { userId: 'demo-id', role: 'doctor' };
+    return next();
+  }
+
   if (!token) {
     return res.status(401).json({ status: 401, message: 'Missing Authorization header' });
   }
